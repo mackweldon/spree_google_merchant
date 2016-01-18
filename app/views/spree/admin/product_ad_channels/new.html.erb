@@ -1,0 +1,7 @@
+<h1>New Product Ad Channel</h1>
+
+<%= form_for(@product_ad_channel, url: new_admin_product_ad_channel_path, :method => :put) do |f| %>
+
+	<%= render partial: "form", locals: {:f => f} %>
+
+<% end %>

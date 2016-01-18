@@ -39,12 +39,19 @@ module SpreeGoogleMerchant
       @store = opts[:store] if opts[:store].present?
       @title = @store ? @store.name : Spree::GoogleMerchant::Config[:store_name]
 
-      @domain = @store ? @store.domains.match(/[\w\.]+/).to_s : opts[:path]
-      @domain ||= Spree::GoogleMerchant::Config[:public_domain]
+      if @store
+        if @store.respond_to?(:domains)
+          @domain = @store.domains.match(/[\w\.]+/).to_s
+        else
+          @domain =  Spree::GoogleMerchant::Config[:public_domain]
+        end
+      else
+        @domain = opts[:path]
+      end
     end
 
     def ads
-      Spree::ProductAd.active.includes([:channel, :variant => [:product => :translations]]).where("spree_product_ad_channels.channel_type = 'google_shopping'")
+      Spree::ProductAd.active.joins([:channel, :variant => [:product]]).where("spree_product_ad_channels.channel_type = 'google_shopping'")
     end
 
     def generate_store
@@ -81,16 +88,17 @@ module SpreeGoogleMerchant
 
     def validate_record(ad)
       product = ad.variant.product
-      return false if product.images.length == 0 && product.imagesize == 0 rescue true
+
+      return false if product.front_images.length == 0 rescue true
       return false if product.google_merchant_title.nil?
       return false if product.google_merchant_product_category.nil?
       return false if product.google_merchant_availability.nil?
       return false if product.google_merchant_price.nil?
       return false if product.google_merchant_brand.nil?
-      return false if product.google_merchant_gtin.nil?
+      # return false if product.google_merchant_gtin.nil?
       return false if product.google_merchant_mpn.nil?
       return false if product.respond_to?(:discontinued?) && product.discontinued? && self.master.stock_items.sum(:count_on_hand) <= 0
-      return false unless validate_upc(product.upc)
+      # return false if ! validate_upc(product.upc)
 
       unless product.google_merchant_sale_price.nil?
         return false if product.google_merchant_sale_price_effective.nil?
@@ -99,7 +107,7 @@ module SpreeGoogleMerchant
       true
     end    
     
-    def generate_xml output
+    def generate_xml output=nil
       xml = Builder::XmlMarkup.new(:target => output)
       xml.instruct!
 
@@ -132,12 +140,17 @@ module SpreeGoogleMerchant
 
     def build_feed_item(xml, ad)
       product = ad.variant.product
+      variant = ad.variant
       xml.item do
         xml.tag!('link', product_url(product.permalink, :host => domain))
-        build_images(xml, product)
+        build_images(xml, variant)
 
         GOOGLE_MERCHANT_ATTR_MAP.each do |k, v|
-          value = product.send("google_merchant_#{v}")
+          if variant.respond_to?("google_merchant_#{v}".to_sym)
+            value = variant.send("google_merchant_#{v}".to_sym)
+          else
+            value = product.send("google_merchant_#{v}")
+          end
           xml.tag!(k, value.to_s) if value.present?
         end
         build_shipping(xml, ad)
@@ -146,8 +159,8 @@ module SpreeGoogleMerchant
       end
     end
 
-    def build_images(xml, product)
-      main_image, *more_images = product.master.images
+    def build_images(xml, variant)
+      main_image, *more_images = variant.front_images
 
       return unless main_image
       xml.tag!('g:image_link', image_url(main_image).sub(/\?.*$/, '').sub(/^\/\//, 'http://'))
@@ -159,7 +172,7 @@ module SpreeGoogleMerchant
 
     def image_url image
       base_url = image.attachment.url(:large)
-      base_url = "#{domain}/#{base_url}" unless Spree::Config[:use_s3]
+      # base_url = "#{domain}/#{base_url}" unless Spree::Config[:use_s3]
 
       base_url
     end
@@ -191,22 +204,32 @@ module SpreeGoogleMerchant
     # <g:adwords_labels>
     def build_adwords_labels(xml, ad)
       product = ad.variant.product
+      variant = ad.variant
       labels = []
 
       taxon = product.taxons.first
       unless taxon.nil?
         taxon.self_and_ancestors.each do |taxon|
-          labels << taxon.name
+          labels << taxon.name if taxon.parent != nil
         end
       end
 
-      list = [:category,:group,:type,:theme,:keyword,:color,:shape,:brand,:size,:material,:for,:agegroup]
+      list = [:group,:type,:theme,:keyword,:color,:shape,:brand,:size,:material,:for,:agegroup]
       list.each do |prop|
         if labels.length < 10 then
           value = product.property(prop)
           labels << value if value.present?
         end
       end
+      
+      list = [:color, :size_presentation]
+      list.each do |prop|
+        if variant.respond_to?(prop)
+          value = variant.send(prop)
+          labels << value if value.present?
+        end
+      end
+      
 
       labels.slice(0..9).each do |l|
         xml.tag!('g:adwords_labels', l)
