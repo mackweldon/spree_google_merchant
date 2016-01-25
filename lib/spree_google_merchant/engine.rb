@@ -20,16 +20,14 @@ module SpreeGoogleMerchant
           ['g:condition', 'condition'],
           ['g:product_type', 'product_type'],
           ['g:brand', 'brand'],
-          ['g:quantity','quantity'],
           ['g:availability', 'availability'],
           ['g:image_link','image_link'],
           ['g:google_product_category','product_category'],
           ['g:shipping_weight','shipping_weight'],
-          ['g:adult','adult'],
-          ['g:gender','gender'],
-          ['g:age_group','age_group'],
           ['g:color','color'],
           ['g:size','size'],
+          ['g:gender','gender'],
+          ['g:age_group','age_group'],
           ['g:adwords_grouping','adwords_group']
       ]
     end

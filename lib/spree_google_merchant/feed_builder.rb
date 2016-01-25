@@ -142,7 +142,12 @@ module SpreeGoogleMerchant
       product = ad.variant.product
       variant = ad.variant
       xml.item do
-        xml.tag!('link', product_url(product.permalink, :host => domain))
+        product_url_parmas = {:host => domain}
+        if variant.color.present?
+          product_url_parmas.merge!(color: variant.color)
+        end
+        
+        xml.tag!('link', product_url(product.permalink, product_url_parmas))
         build_images(xml, variant)
 
         GOOGLE_MERCHANT_ATTR_MAP.each do |k, v|
@@ -222,13 +227,13 @@ module SpreeGoogleMerchant
         end
       end
       
-      list = [:color, :size_presentation]
-      list.each do |prop|
-        if variant.respond_to?(prop)
-          value = variant.send(prop)
-          labels << value if value.present?
-        end
-      end
+      # list = [:color, :size_presentation]
+      # list.each do |prop|
+      #   if variant.respond_to?(prop)
+      #     value = variant.send(prop)
+      #     labels << value if value.present?
+      #   end
+      # end
       
 
       labels.slice(0..9).each do |l|
@@ -237,22 +242,22 @@ module SpreeGoogleMerchant
     end
 
     def build_custom_labels(xml, ad)
-      product = ad.variant.product
-
-      # Set availability
-      xml.tag!('g:custom_label_0', product.google_merchant_availability)
-
-      # Set CPC
-      channel = ad.channel
-      max_cpc = nil
-      if ad.max_cpc
-        max_cpc = ad.max_cpc
-      elsif ad.variant && ad.variant.max_cpc
-        max_cpc = ad.variant.max_cpc / 0.65
-      elsif channel && channel.default_max_cpc
-        max_cpc = channel.default_max_cpc
-      end
-      xml.tag!('g:custom_label_1', '%.2f' % max_cpc) if max_cpc
+      # product = ad.variant.product
+      # 
+      # # Set availability
+      # xml.tag!('g:custom_label_0', product.google_merchant_availability)
+      # 
+      # # Set CPC
+      # channel = ad.channel
+      # max_cpc = nil
+      # if ad.max_cpc
+      #   max_cpc = ad.max_cpc
+      # elsif ad.variant && ad.variant.max_cpc
+      #   max_cpc = ad.variant.max_cpc / 0.65
+      # elsif channel && channel.default_max_cpc
+      #   max_cpc = channel.default_max_cpc
+      # end
+      # xml.tag!('g:custom_label_1', '%.2f' % max_cpc) if max_cpc
     end
 
     def build_meta(xml)
