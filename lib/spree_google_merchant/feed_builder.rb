@@ -97,7 +97,7 @@ module SpreeGoogleMerchant
       return false if product.google_merchant_brand.nil?
       # return false if product.google_merchant_gtin.nil?
       return false if product.google_merchant_mpn.nil?
-      return false if product.respond_to?(:discontinued?) && product.discontinued? && self.master.stock_items.sum(:count_on_hand) <= 0
+      return false if product.respond_to?(:discontinued?) && product.discontinued?
       # return false if ! validate_upc(product.upc)
 
       unless product.google_merchant_sale_price.nil?
