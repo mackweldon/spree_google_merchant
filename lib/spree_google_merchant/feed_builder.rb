@@ -165,10 +165,15 @@ module SpreeGoogleMerchant
     end
 
     def build_images(xml, variant)
-      main_image, *more_images = variant.front_images
+      product = variant.product
+      color_option_value = variant.option_values.where(option_type: Spree::OptionType.COLOR)
+      main_image, *more_images = product.front_images_for_option_value(color_option_value)
 
       return unless main_image
+      
       xml.tag!('g:image_link', image_url(main_image).sub(/\?.*$/, '').sub(/^\/\//, 'http://'))
+
+      more_images.push(*product.back_and_on_model_images_for_option_value(color_option_value))
 
       more_images.each do |image|
         xml.tag!('g:additional_image_link', image_url(image).sub(/\?.*$/, '').sub(/^\/\//, 'http://'))
